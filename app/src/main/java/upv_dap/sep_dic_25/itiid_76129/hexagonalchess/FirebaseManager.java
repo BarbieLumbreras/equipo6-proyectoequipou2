@@ -1,17 +1,13 @@
 package upv_dap.sep_dic_25.itiid_76129.hexagonalchess;
 
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
-import upv_dap.sep_dic_25.itiid_76129.hexagonalchess.GameState;
-import upv_dap.sep_dic_25.itiid_76129.hexagonalchess.HexBoard;
-import upv_dap.sep_dic_25.itiid_76129.hexagonalchess.HexCell;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 public class FirebaseManager {
     private DatabaseReference gamesRef;
@@ -19,36 +15,57 @@ public class FirebaseManager {
     private String currentGameId;
     private String playerId;
 
+    // --- CAMBIO 1: Variable para guardar el estado actual del juego ---
+    private GameState currentGameState;
+
     public FirebaseManager() {
         FirebaseDatabase database = FirebaseDatabase.getInstance();
         gamesRef = database.getReference("games");
-        playerId = UUID.randomUUID().toString();
+        // Se asume que GameIdGenerator está en el mismo paquete o importado correctamente
+        playerId = GameIdGenerator.generateNewId();
     }
 
     // Crear nueva partida
     public void createGame(OnGameCreatedListener listener) {
-        String gameId = gamesRef.push().getKey();
+        String gameId = GameIdGenerator.generateNewId();
+        DatabaseReference gameRef = gamesRef.child(gameId);
+
+        gameRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    createGame(listener); // Colisión, reintentar
+                } else {
+                    initializeGameRoom(gameRef, gameId, listener);
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+                listener.onError("Error al verificar ID de partida: " + error.getMessage());
+            }
+        });
+    }
+
+    private void initializeGameRoom(DatabaseReference gameRef, String gameId, OnGameCreatedListener listener) {
         GameState gameState = new GameState(gameId);
         gameState.setWhitePlayerId(playerId);
 
-        // Inicializar tablero y convertir a Firebase
         HexBoard board = new HexBoard();
         Map<String, GameState.PieceData> piecesData = new HashMap<>();
-
         for (Map.Entry<String, HexCell> entry : board.getAllCells().entrySet()) {
             HexCell cell = entry.getValue();
             if (cell.getPiece() != null) {
-                piecesData.put(entry.getKey(),
-                        new GameState.PieceData(cell.getPiece()));
+                piecesData.put(entry.getKey(), new GameState.PieceData(cell.getPiece()));
             }
         }
-
         gameState.setPieces(piecesData);
 
-        gamesRef.child(gameId).setValue(gameState)
+        gameRef.setValue(gameState)
                 .addOnSuccessListener(aVoid -> {
                     currentGameId = gameId;
-                    currentGameRef = gamesRef.child(gameId);
+                    currentGameRef = gameRef;
+                    currentGameState = gameState; // Guardar estado inicial
                     listener.onGameCreated(gameId);
                 })
                 .addOnFailureListener(e -> listener.onError(e.getMessage()));
@@ -62,15 +79,21 @@ public class FirebaseManager {
                 if (snapshot.exists()) {
                     GameState gameState = snapshot.getValue(GameState.class);
 
-                    if (gameState != null && gameState.getBlackPlayerId() == null) {
+                    if (gameState != null && gameState.getBlackPlayerId() == null && !playerId.equals(gameState.getWhitePlayerId())) {
                         gamesRef.child(gameId).child("blackPlayerId").setValue(playerId);
                         gamesRef.child(gameId).child("status").setValue("playing");
 
                         currentGameId = gameId;
                         currentGameRef = gamesRef.child(gameId);
+                        // No es necesario actualizar currentGameState aquí, porque listenToGame lo hará inmediatamente después
+                        listener.onGameJoined(gameId);
+                    } else if (gameState != null && (playerId.equals(gameState.getWhitePlayerId()) || playerId.equals(gameState.getBlackPlayerId()))) {
+                        // El jugador ya está en la partida, permitir "re-unirse"
+                        currentGameId = gameId;
+                        currentGameRef = gamesRef.child(gameId);
                         listener.onGameJoined(gameId);
                     } else {
-                        listener.onError("Partida llena o no disponible");
+                        listener.onError("Partida llena o no disponible.");
                     }
                 } else {
                     listener.onError("Partida no encontrada");
@@ -91,6 +114,7 @@ public class FirebaseManager {
             return;
         }
 
+        // Usamos addListenerForSingleValueEvent para asegurar que la escritura se basa en el estado más reciente
         currentGameRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
@@ -112,8 +136,7 @@ public class FirebaseManager {
                     return;
                 }
 
-                // Realizar movimiento
-                Map<String, GameState.PieceData> pieces = gameState.getPieces();
+                Map<String, GameState.PieceData> pieces = gameState.getPieces() != null ? gameState.getPieces() : new HashMap<>();
                 GameState.PieceData piece = pieces.get(fromKey);
 
                 if (piece == null) {
@@ -121,15 +144,12 @@ public class FirebaseManager {
                     return;
                 }
 
-                // Actualizar posición
                 pieces.remove(fromKey);
                 piece.hasMoved = true;
                 pieces.put(toKey, piece);
 
-                // Cambiar turno
                 String newTurn = "white".equals(gameState.getCurrentTurn()) ? "black" : "white";
 
-                // Actualizar en Firebase
                 Map<String, Object> updates = new HashMap<>();
                 updates.put("pieces", pieces);
                 updates.put("currentTurn", newTurn);
@@ -156,6 +176,8 @@ public class FirebaseManager {
             public void onDataChange(DataSnapshot snapshot) {
                 GameState gameState = snapshot.getValue(GameState.class);
                 if (gameState != null) {
+                    // --- CAMBIO 2: Actualizar la variable local con cada cambio de Firebase ---
+                    currentGameState = gameState;
                     listener.onGameUpdate(gameState);
                 }
             }
@@ -169,6 +191,11 @@ public class FirebaseManager {
 
     public String getPlayerId() {
         return playerId;
+    }
+
+    // --- CAMBIO 3: Getter para que la MainActivity pueda acceder al estado del juego ---
+    public GameState getCurrentGameState() {
+        return currentGameState;
     }
 
     // Interfaces de callbacks

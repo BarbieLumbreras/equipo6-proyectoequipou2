@@ -130,8 +130,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateBoard(GameState gameState) {
-        HexBoard board = new HexBoard();
-
+        HexBoard board = boardView.getBoard(); // Necesitarías crear el método getBoard() en tu vista
         // Limpiar todas las piezas
         for (HexCell cell : board.getAllCells().values()) {
             cell.setPiece(null);
@@ -152,7 +151,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        boardView.setBoard(board);
+        boardView.invalidate();
     }
 
     private void updateTurnDisplay(GameState gameState) {
@@ -173,28 +172,67 @@ public class MainActivity extends AppCompatActivity {
                 (amBlack && "black".equals(currentTurn));
     }
 
+    // En MainActivity.java
+
     private void handleCellClick(HexCell cell) {
         if (!isMyTurn) {
             Toast.makeText(this, "No es tu turno", Toast.LENGTH_SHORT).show();
+            // Limpiamos la selección si el usuario hace clic fuera de su turno
+            selectedCell = null;
+            boardView.clearSelection();
             return;
         }
 
-        // Si no hay celda seleccionada, seleccionar una con pieza
+        // Si no hay celda seleccionada...
         if (selectedCell == null) {
-            if (cell.getPiece() != null) {
+            // ...solo se puede seleccionar una celda si tiene una pieza DEL COLOR DEL JUGADOR.
+            if (cell.getPiece() != null && isMyPiece(cell.getPiece())) {
                 selectedCell = cell;
                 Toast.makeText(this, "Pieza seleccionada", Toast.LENGTH_SHORT).show();
+                // Opcional: podrías decirle a tu boardView que resalte la celda seleccionada
+                // boardView.highlightSelection(cell);
+            } else if (cell.getPiece() != null) {
+                // Esto ocurre si el jugador intenta seleccionar una pieza del oponente
+                Toast.makeText(this, "No puedes mover esa pieza", Toast.LENGTH_SHORT).show();
             }
         } else {
-            // Intentar mover la pieza
+            // Si ya hay una celda seleccionada, intentamos mover la pieza
+
+            // Opcional pero recomendado: evitar "moverse" a la misma celda
+            if (selectedCell.equals(cell)) {
+                selectedCell = null;
+                boardView.clearSelection();
+                Toast.makeText(this, "Selección cancelada", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             String fromKey = selectedCell.getQ() + "," + selectedCell.getR();
             String toKey = cell.getQ() + "," + cell.getR();
 
             makeMove(fromKey, toKey);
             selectedCell = null;
-            boardView.clearSelection();
+            boardView.clearSelection(); // Limpia la selección después de intentar mover
         }
     }
+
+    private boolean isMyPiece(ChessPiece piece) {
+        if (piece == null) return false;
+
+        // Obtiene el ID del jugador y el estado actual de la partida desde FirebaseManager
+        String myId = firebaseManager.getPlayerId();
+        GameState gameState = firebaseManager.getCurrentGameState(); // Necesitarás este método
+
+        if (gameState == null) return false; // Si aún no se ha cargado el estado del juego
+
+        boolean amWhite = myId.equals(gameState.getWhitePlayerId());
+        boolean amBlack = myId.equals(gameState.getBlackPlayerId());
+
+        // La pieza es mía si soy el jugador blanco y la pieza es blanca,
+        // o si soy el jugador negro y la pieza es negra.
+        return (amWhite && piece.getColor() == ChessPiece.PieceColor.WHITE) ||
+                (amBlack && piece.getColor() == ChessPiece.PieceColor.BLACK);
+    }
+
 
     private void makeMove(String fromKey, String toKey) {
         firebaseManager.makeMove(fromKey, toKey,
