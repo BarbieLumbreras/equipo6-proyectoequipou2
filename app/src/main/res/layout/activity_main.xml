@@ -3,7 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#1a1a1a"
+    android:fitsSystemWindows="true"
+    android:background="@drawable/bg_app_gradient"
     tools:context=".MainActivity">
 
     <!-- Toolbar superior -->
@@ -12,8 +13,12 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="16dp"
-        android:background="#2c2c2c"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp"
+        android:background="@drawable/bg_topbar"
+        android:elevation="6dp"
         android:gravity="center_vertical">
 
         <TextView
@@ -22,27 +27,31 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="ID: "
-            android:textColor="#ffffff"
-            android:textSize="14sp" />
+            android:textColor="#EDEDED"
+            android:textSize="14sp"
+            android:alpha="0.9"
+            android:fontFamily="sans-serif" />
 
         <TextView
             android:id="@+id/tvTurn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Turno: Blancas"
-            android:textColor="#4CAF50"
+            android:textColor="#8CF3A5"
             android:textSize="16sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium" />
     </LinearLayout>
 
-    <!-- Tablero hexagonal con fondo de madera -->
+    <!-- Tablero hexagonal con fondo de madera suave -->
     <upv_dap.sep_dic_25.itiid_76129.hexagonalchess.HexagonalBoardView
         android:id="@+id/hexBoard"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_below="@id/toolbar"
         android:layout_above="@id/buttonContainer"
-        android:background="#3E2723" />
+        android:layout_margin="12dp"
+        android:background="@drawable/bg_board" />
 
     <!-- Botones inferiores -->
     <LinearLayout
@@ -52,26 +61,33 @@
         android:layout_alignParentBottom="true"
         android:orientation="horizontal"
         android:padding="16dp"
-        android:background="#2c2c2c"
+        android:background="@drawable/bg_bottombar"
+        android:elevation="8dp"
         android:gravity="center">
 
         <Button
             android:id="@+id/btnCreateGame"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:layout_weight="1"
             android:layout_marginEnd="8dp"
             android:text="Crear Partida"
-            android:backgroundTint="#4CAF50" />
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:fontFamily="sans-serif-medium"
+            android:background="@drawable/btn_primary" />
 
         <Button
             android:id="@+id/btnJoinGame"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
             android:text="Unirse"
-            android:backgroundTint="#2196F3" />
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:fontFamily="sans-serif-medium"
+            android:background="@drawable/btn_secondary" />
     </LinearLayout>
 
 </RelativeLayout>

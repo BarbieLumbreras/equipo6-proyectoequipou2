@@ -54,7 +54,7 @@ public class HexagonalBoardView extends View {
         hexPaint.setStyle(Paint.Style.FILL);
 
         textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        textPaint.setTextSize(hexSize * 0.9f);; // Tamaño relativo al hexágono
+        textPaint.setTextSize(hexSize * 1.1f);; // Tamaño relativo al hexágono
         textPaint.setTextAlign(Paint.Align.CENTER);
         textPaint.setColor(Color.BLACK);
 
@@ -78,7 +78,7 @@ public class HexagonalBoardView extends View {
         centerX = w / 2f;
         centerY = h / 2f;
         // Ajustar para radio 5 (11 hexágonos en el diámetro más ancho)
-        hexSize = Math.min(w, h) / 20f;
+        hexSize = Math.min(w, h) / 19f;
     }
 
     @Override
