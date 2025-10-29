@@ -3,18 +3,15 @@ package upv_dap.sep_dic_25.itiid_76129.hexagonalchess;
 import androidx.appcompat.app.AppCompatActivity;
 import android.app.AlertDialog;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import upv_dap.sep_dic_25.itiid_76129.hexagonalchess.FirebaseManager;
-import upv_dap.sep_dic_25.itiid_76129.hexagonalchess.GameState;
-import upv_dap.sep_dic_25.itiid_76129.hexagonalchess.HexBoard;
-import upv_dap.sep_dic_25.itiid_76129.hexagonalchess.HexCell;
-import upv_dap.sep_dic_25.itiid_76129.hexagonalchess.HexagonalBoardView;
-
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "MainActivity";
+
     private HexagonalBoardView boardView;
     private TextView tvGameId, tvTurn;
     private Button btnCreateGame, btnJoinGame;
@@ -31,6 +28,9 @@ public class MainActivity extends AppCompatActivity {
         initializeViews();
         firebaseManager = new FirebaseManager();
         setupListeners();
+
+        // IMPORTANTE: Verificar posiciones iniciales para debugging
+        debugBoardPositions();
     }
 
     private void initializeViews() {
@@ -48,8 +48,38 @@ public class MainActivity extends AppCompatActivity {
         // Botón unirse a partida
         btnJoinGame.setOnClickListener(v -> showJoinGameDialog());
 
-        // Click en celdas del tablero
-        boardView.setOnCellClickListener(cell -> handleCellClick(cell));
+        // IMPORTANTE: Usar el listener correcto para drag & drop
+        boardView.setOnMoveAttemptListener((from, to, callback) -> {
+            if (!isMyTurn) {
+                Toast.makeText(this, "No es tu turno", Toast.LENGTH_SHORT).show();
+                callback.onMoveValidated(false);
+                return;
+            }
+
+            // Verificar que la pieza sea mía
+            if (from.getPiece() != null && !isMyPiece(from.getPiece())) {
+                Toast.makeText(this, "No puedes mover esa pieza", Toast.LENGTH_SHORT).show();
+                callback.onMoveValidated(false);
+                return;
+            }
+
+            // Realizar el movimiento en Firebase
+            String fromKey = from.getQ() + "," + from.getR();
+            String toKey = to.getQ() + "," + to.getR();
+
+            makeMove(fromKey, toKey, callback);
+        });
+    }
+
+    private void debugBoardPositions() {
+        // Esperar un poco para que el tablero se renderice
+        boardView.postDelayed(() -> {
+            HexBoard board = boardView.getBoard();
+            Log.d(TAG, "=== DEBUGGING POSICIONES DEL TABLERO ===");
+            DebugHelper.printAllPieces(board);
+            DebugHelper.verifyKeyPieces(board);
+            DebugHelper.printBoardASCII(board);
+        }, 500);
     }
 
     private void createGame() {
@@ -130,7 +160,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateBoard(GameState gameState) {
-        HexBoard board = boardView.getBoard(); // Necesitarías crear el método getBoard() en tu vista
+        HexBoard board = boardView.getBoard();
+
         // Limpiar todas las piezas
         for (HexCell cell : board.getAllCells().values()) {
             cell.setPiece(null);
@@ -146,7 +177,10 @@ public class MainActivity extends AppCompatActivity {
 
                 HexCell cell = board.getCell(q, r);
                 if (cell != null && pieceData != null) {
-                    cell.setPiece(pieceData.toPiece());
+                    ChessPiece piece = pieceData.toPiece();
+                    // IMPORTANTE: Actualizar el estado hasMoved
+                    piece.setMoved(pieceData.hasMoved);
+                    cell.setPiece(piece);
                 }
             }
         }
@@ -172,81 +206,37 @@ public class MainActivity extends AppCompatActivity {
                 (amBlack && "black".equals(currentTurn));
     }
 
-    // En MainActivity.java
-
-    private void handleCellClick(HexCell cell) {
-        if (!isMyTurn) {
-            Toast.makeText(this, "No es tu turno", Toast.LENGTH_SHORT).show();
-            // Limpiamos la selección si el usuario hace clic fuera de su turno
-            selectedCell = null;
-            boardView.clearSelection();
-            return;
-        }
-
-        // Si no hay celda seleccionada...
-        if (selectedCell == null) {
-            // ...solo se puede seleccionar una celda si tiene una pieza DEL COLOR DEL JUGADOR.
-            if (cell.getPiece() != null && isMyPiece(cell.getPiece())) {
-                selectedCell = cell;
-                Toast.makeText(this, "Pieza seleccionada", Toast.LENGTH_SHORT).show();
-                // Opcional: podrías decirle a tu boardView que resalte la celda seleccionada
-                // boardView.highlightSelection(cell);
-            } else if (cell.getPiece() != null) {
-                // Esto ocurre si el jugador intenta seleccionar una pieza del oponente
-                Toast.makeText(this, "No puedes mover esa pieza", Toast.LENGTH_SHORT).show();
-            }
-        } else {
-            // Si ya hay una celda seleccionada, intentamos mover la pieza
-
-            // Opcional pero recomendado: evitar "moverse" a la misma celda
-            if (selectedCell.equals(cell)) {
-                selectedCell = null;
-                boardView.clearSelection();
-                Toast.makeText(this, "Selección cancelada", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            String fromKey = selectedCell.getQ() + "," + selectedCell.getR();
-            String toKey = cell.getQ() + "," + cell.getR();
-
-            makeMove(fromKey, toKey);
-            selectedCell = null;
-            boardView.clearSelection(); // Limpia la selección después de intentar mover
-        }
-    }
-
     private boolean isMyPiece(ChessPiece piece) {
         if (piece == null) return false;
 
-        // Obtiene el ID del jugador y el estado actual de la partida desde FirebaseManager
         String myId = firebaseManager.getPlayerId();
-        GameState gameState = firebaseManager.getCurrentGameState(); // Necesitarás este método
+        GameState gameState = firebaseManager.getCurrentGameState();
 
-        if (gameState == null) return false; // Si aún no se ha cargado el estado del juego
+        if (gameState == null) return false;
 
         boolean amWhite = myId.equals(gameState.getWhitePlayerId());
         boolean amBlack = myId.equals(gameState.getBlackPlayerId());
 
-        // La pieza es mía si soy el jugador blanco y la pieza es blanca,
-        // o si soy el jugador negro y la pieza es negra.
         return (amWhite && piece.getColor() == ChessPiece.PieceColor.WHITE) ||
                 (amBlack && piece.getColor() == ChessPiece.PieceColor.BLACK);
     }
 
-
-    private void makeMove(String fromKey, String toKey) {
+    private void makeMove(String fromKey, String toKey,
+                          HexagonalBoardView.OnMoveValidationCallback callback) {
         firebaseManager.makeMove(fromKey, toKey,
                 new FirebaseManager.OnMoveCompleteListener() {
                     @Override
                     public void onMoveComplete() {
                         Toast.makeText(MainActivity.this,
                                 "Movimiento realizado", Toast.LENGTH_SHORT).show();
+                        callback.onMoveValidated(true);
                     }
 
                     @Override
                     public void onError(String error) {
                         Toast.makeText(MainActivity.this,
                                 "Error: " + error, Toast.LENGTH_SHORT).show();
+                        callback.onMoveValidated(false);
                     }
                 });
     }
@@ -254,5 +244,14 @@ public class MainActivity extends AppCompatActivity {
     private void enableButtons(boolean enable) {
         btnCreateGame.setEnabled(enable);
         btnJoinGame.setEnabled(enable);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Limpiar el listener de Firebase
+        if (firebaseManager != null) {
+            firebaseManager.cleanup();
+        }
     }
 }

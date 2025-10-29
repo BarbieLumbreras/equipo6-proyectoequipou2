@@ -35,13 +35,14 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Tablero hexagonal -->
+    <!-- Tablero hexagonal con fondo de madera -->
     <upv_dap.sep_dic_25.itiid_76129.hexagonalchess.HexagonalBoardView
         android:id="@+id/hexBoard"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_below="@id/toolbar"
-        android:layout_above="@id/buttonContainer" />
+        android:layout_above="@id/buttonContainer"
+        android:background="#3E2723" />
 
     <!-- Botones inferiores -->
     <LinearLayout

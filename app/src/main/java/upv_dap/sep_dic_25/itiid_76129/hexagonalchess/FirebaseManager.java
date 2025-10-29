@@ -14,14 +14,14 @@ public class FirebaseManager {
     private DatabaseReference currentGameRef;
     private String currentGameId;
     private String playerId;
-
-    // --- CAMBIO 1: Variable para guardar el estado actual del juego ---
     private GameState currentGameState;
+
+    // NUEVO: Guardar el listener para poder removerlo después
+    private ValueEventListener gameListener;
 
     public FirebaseManager() {
         FirebaseDatabase database = FirebaseDatabase.getInstance();
         gamesRef = database.getReference("games");
-        // Se asume que GameIdGenerator está en el mismo paquete o importado correctamente
         playerId = GameIdGenerator.generateNewId();
     }
 
@@ -34,7 +34,7 @@ public class FirebaseManager {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
                 if (snapshot.exists()) {
-                    createGame(listener); // Colisión, reintentar
+                    createGame(listener);
                 } else {
                     initializeGameRoom(gameRef, gameId, listener);
                 }
@@ -51,7 +51,8 @@ public class FirebaseManager {
         GameState gameState = new GameState(gameId);
         gameState.setWhitePlayerId(playerId);
 
-        HexBoard board = new HexBoard();
+        HexBoard board = new HexBoard(); // El constructor ya inicializa el tablero
+
         Map<String, GameState.PieceData> piecesData = new HashMap<>();
         for (Map.Entry<String, HexCell> entry : board.getAllCells().entrySet()) {
             HexCell cell = entry.getValue();
@@ -65,7 +66,7 @@ public class FirebaseManager {
                 .addOnSuccessListener(aVoid -> {
                     currentGameId = gameId;
                     currentGameRef = gameRef;
-                    currentGameState = gameState; // Guardar estado inicial
+                    currentGameState = gameState;
                     listener.onGameCreated(gameId);
                 })
                 .addOnFailureListener(e -> listener.onError(e.getMessage()));
@@ -79,16 +80,17 @@ public class FirebaseManager {
                 if (snapshot.exists()) {
                     GameState gameState = snapshot.getValue(GameState.class);
 
-                    if (gameState != null && gameState.getBlackPlayerId() == null && !playerId.equals(gameState.getWhitePlayerId())) {
+                    if (gameState != null && gameState.getBlackPlayerId() == null &&
+                            !playerId.equals(gameState.getWhitePlayerId())) {
                         gamesRef.child(gameId).child("blackPlayerId").setValue(playerId);
                         gamesRef.child(gameId).child("status").setValue("playing");
 
                         currentGameId = gameId;
                         currentGameRef = gamesRef.child(gameId);
-                        // No es necesario actualizar currentGameState aquí, porque listenToGame lo hará inmediatamente después
                         listener.onGameJoined(gameId);
-                    } else if (gameState != null && (playerId.equals(gameState.getWhitePlayerId()) || playerId.equals(gameState.getBlackPlayerId()))) {
-                        // El jugador ya está en la partida, permitir "re-unirse"
+                    } else if (gameState != null &&
+                            (playerId.equals(gameState.getWhitePlayerId()) ||
+                                    playerId.equals(gameState.getBlackPlayerId()))) {
                         currentGameId = gameId;
                         currentGameRef = gamesRef.child(gameId);
                         listener.onGameJoined(gameId);
@@ -107,14 +109,13 @@ public class FirebaseManager {
         });
     }
 
-    // Realizar movimiento
+    // Realizar movimiento - VERSIÓN MEJORADA
     public void makeMove(String fromKey, String toKey, OnMoveCompleteListener listener) {
         if (currentGameRef == null) {
             listener.onError("No hay partida activa");
             return;
         }
 
-        // Usamos addListenerForSingleValueEvent para asegurar que la escritura se basa en el estado más reciente
         currentGameRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
@@ -136,7 +137,9 @@ public class FirebaseManager {
                     return;
                 }
 
-                Map<String, GameState.PieceData> pieces = gameState.getPieces() != null ? gameState.getPieces() : new HashMap<>();
+                Map<String, GameState.PieceData> pieces = gameState.getPieces() != null ?
+                        gameState.getPieces() : new HashMap<>();
+
                 GameState.PieceData piece = pieces.get(fromKey);
 
                 if (piece == null) {
@@ -144,8 +147,16 @@ public class FirebaseManager {
                     return;
                 }
 
+                // Validar que la pieza sea del color correcto
+                String expectedColor = "white".equals(gameState.getCurrentTurn()) ? "WHITE" : "BLACK";
+                if (!piece.color.equals(expectedColor)) {
+                    listener.onError("No puedes mover esa pieza");
+                    return;
+                }
+
+                // Realizar el movimiento
                 pieces.remove(fromKey);
-                piece.hasMoved = true;
+                piece.hasMoved = true; // Marcar que se ha movido (importante para peones)
                 pieces.put(toKey, piece);
 
                 String newTurn = "white".equals(gameState.getCurrentTurn()) ? "black" : "white";
@@ -156,13 +167,17 @@ public class FirebaseManager {
                 updates.put("lastMoveTimestamp", System.currentTimeMillis());
 
                 currentGameRef.updateChildren(updates)
-                        .addOnSuccessListener(aVoid -> listener.onMoveComplete())
-                        .addOnFailureListener(e -> listener.onError(e.getMessage()));
+                        .addOnSuccessListener(aVoid -> {
+                            listener.onMoveComplete();
+                        })
+                        .addOnFailureListener(e -> {
+                            listener.onError("Error en Firebase: " + e.getMessage());
+                        });
             }
 
             @Override
             public void onCancelled(DatabaseError error) {
-                listener.onError(error.getMessage());
+                listener.onError("Error de conexión: " + error.getMessage());
             }
         });
     }
@@ -171,12 +186,16 @@ public class FirebaseManager {
     public void listenToGame(OnGameUpdateListener listener) {
         if (currentGameRef == null) return;
 
-        currentGameRef.addValueEventListener(new ValueEventListener() {
+        // Remover listener anterior si existe
+        if (gameListener != null) {
+            currentGameRef.removeEventListener(gameListener);
+        }
+
+        gameListener = new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
                 GameState gameState = snapshot.getValue(GameState.class);
                 if (gameState != null) {
-                    // --- CAMBIO 2: Actualizar la variable local con cada cambio de Firebase ---
                     currentGameState = gameState;
                     listener.onGameUpdate(gameState);
                 }
@@ -186,16 +205,32 @@ public class FirebaseManager {
             public void onCancelled(DatabaseError error) {
                 listener.onError(error.getMessage());
             }
-        });
+        };
+
+        currentGameRef.addValueEventListener(gameListener);
+    }
+
+    // NUEVO: Método para limpiar recursos
+    public void cleanup() {
+        if (currentGameRef != null && gameListener != null) {
+            currentGameRef.removeEventListener(gameListener);
+        }
+        gameListener = null;
+        currentGameRef = null;
+        currentGameId = null;
+        currentGameState = null;
     }
 
     public String getPlayerId() {
         return playerId;
     }
 
-    // --- CAMBIO 3: Getter para que la MainActivity pueda acceder al estado del juego ---
     public GameState getCurrentGameState() {
         return currentGameState;
+    }
+
+    public String getCurrentGameId() {
+        return currentGameId;
     }
 
     // Interfaces de callbacks
