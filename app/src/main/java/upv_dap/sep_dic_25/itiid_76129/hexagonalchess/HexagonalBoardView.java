@@ -54,7 +54,7 @@ public class HexagonalBoardView extends View {
         hexPaint.setStyle(Paint.Style.FILL);
 
         textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        textPaint.setTextSize(45f);
+        textPaint.setTextSize(hexSize * 0.9f);; // Tamaño relativo al hexágono
         textPaint.setTextAlign(Paint.Align.CENTER);
         textPaint.setColor(Color.BLACK);
 
@@ -78,7 +78,7 @@ public class HexagonalBoardView extends View {
         centerX = w / 2f;
         centerY = h / 2f;
         // Ajustar para radio 5 (11 hexágonos en el diámetro más ancho)
-        hexSize = Math.min(w, h) / 22f;
+        hexSize = Math.min(w, h) / 20f;
     }
 
     @Override
@@ -91,7 +91,7 @@ public class HexagonalBoardView extends View {
         for (HexCell cell : board.getAllCells().values()) {
             drawHexCell(canvas, cell);
         }
-
+        //drawCoordinates(canvas);
         // Dibujar movimientos válidos si hay una celda seleccionada
         if (selectedCell != null && validMoves != null) {
             for (HexCell cell : validMoves) {
@@ -138,11 +138,11 @@ public class HexagonalBoardView extends View {
         // Colores que coinciden con la imagen de referencia
         switch (cell.getColor()) {
             case "light":
-                return Color.parseColor("#F4E4C1"); // Beige muy claro
+                return Color.parseColor("#ffce9e"); // Beige muy claro
             case "medium":
-                return Color.parseColor("#D4A574"); // Café medio/naranja
+                return Color.parseColor("#e8ab6f"); // Café medio/naranja
             case "dark":
-                return Color.parseColor("#8B5A2B"); // Café oscuro
+                return Color.parseColor("#d18b47"); // Café oscuro
             default:
                 return Color.LTGRAY;
         }
@@ -152,7 +152,7 @@ public class HexagonalBoardView extends View {
         if (piece.getColor() == ChessPiece.PieceColor.WHITE) {
             textPaint.setColor(Color.WHITE);
         } else {
-            textPaint.setColor(Color.parseColor("#2C1810"));
+            textPaint.setColor(Color.parseColor("#000000"));
         }
 
         textPaint.setShadowLayer(4, 2, 2, Color.argb(180, 0, 0, 0));
@@ -191,15 +191,19 @@ public class HexagonalBoardView extends View {
 
     private Path createHexagonPath(PointF center) {
         Path path = new Path();
-        // CAMBIO CRÍTICO: Hexágono flat-top (lado plano arriba/abajo)
-        // Comenzar desde 0° para orientación correcta
-        for (int i = 0; i < 6; i++) {
-            float angle = (float) (Math.PI / 3 * i); // Sin offset, empieza en 0°
-            float x = center.x + hexSize * (float) Math.cos(angle);
-            float y = center.y + hexSize * (float) Math.sin(angle);
+        float radius = hexSize;
 
-            if (i == 0) path.moveTo(x, y);
-            else path.lineTo(x, y);
+        // CORRECCIÓN: Orientación point-top (puntas arriba/abajo)
+        for (int i = 0; i < 6; i++) {
+            float angle = (float) (Math.PI / 3 * i); // Sin offset = point-top
+            float x = center.x + radius * (float) Math.cos(angle);
+            float y = center.y + radius * (float) Math.sin(angle);
+
+            if (i == 0) {
+                path.moveTo(x, y);
+            } else {
+                path.lineTo(x, y);
+            }
         }
         path.close();
         return path;
@@ -293,20 +297,20 @@ public class HexagonalBoardView extends View {
     // ==================== CONVERSIÓN DE COORDENADAS ====================
 
     private PointF hexToPixel(int q, int r) {
-        // Coordenadas para flat-top orientation
-        // x aumenta hacia la derecha, y aumenta hacia abajo
-        float x = hexSize * (float)(Math.sqrt(3) * q + Math.sqrt(3)/2 * r);
-        float y = hexSize * (float)(3.0/2 * r);
-        return new PointF(centerX + x, centerY - y); // Nota: -y para invertir eje vertical
+        // CORRECCIÓN: Fórmula para point-top orientation
+        float x = hexSize * (float) (3.0 / 2 * q);
+        float y = hexSize * (float) (Math.sqrt(3) * (r + q / 2.0));
+
+        return new PointF(centerX + x, centerY + y);
     }
 
     private HexCell pixelToHex(float x, float y) {
+        // CORRECCIÓN: Conversión inversa para point-top
         float relX = (x - centerX) / hexSize;
-        float relY = -(y - centerY) / hexSize; // Invertir Y
+        float relY = (y - centerY) / hexSize;
 
-        // Conversión inversa para flat-top
-        float q = (float)((Math.sqrt(3)/3 * relX - 1.0/3 * relY));
-        float r = (float)(2.0/3 * relY);
+        float q = (float) (2.0 / 3 * relX);
+        float r = (float) ((-1.0 / 3 * relX + Math.sqrt(3) / 3 * relY));
 
         return hexRound(q, r);
     }
@@ -361,5 +365,28 @@ public class HexagonalBoardView extends View {
 
     public void setOnMoveAttemptListener(OnMoveAttemptListener listener) {
         this.moveAttemptListener = listener;
+    }
+    // Método para debug - mostrar coordenadas
+    private void drawCoordinates(Canvas canvas) {
+        Paint coordPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        coordPaint.setTextSize(hexSize * 0.60f);
+        coordPaint.setColor(Color.BLUE);
+        coordPaint.setTextAlign(Paint.Align.CENTER);
+
+        for (HexCell cell : board.getAllCells().values()) {
+            PointF center = hexToPixel(cell.getQ(), cell.getR());
+
+            // Mostrar coordenadas (q,r)
+            String coords = cell.getQ() + "," + cell.getR();
+            canvas.drawText(coords, center.x, center.y, coordPaint);
+
+            // Opcional: mostrar si tiene pieza
+            if (cell.getPiece() != null) {
+                coordPaint.setColor(Color.BLUE);
+                String pieceInfo = cell.getPiece().getType().name().charAt(0) + "";
+                canvas.drawText(pieceInfo, center.x, center.y + hexSize * 0.4f, coordPaint);
+                coordPaint.setColor(Color.RED);
+            }
+        }
     }
 }

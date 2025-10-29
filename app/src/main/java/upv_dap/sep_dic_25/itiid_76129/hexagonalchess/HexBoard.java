@@ -30,19 +30,18 @@ public class HexBoard {
     }
 
     private String getCellColor(int q, int r) {
-        int s = -q - r;
-        int qMod = ((q % 3) + 3) % 3;
-        int rMod = ((r % 3) + 3) % 3;
-        int sMod = ((s % 3) + 3) % 3;
+        // Patrón verificado para ajedrez hexagonal Gliński
+        // Usando la fórmula: (q - r) mod 3
 
-        if (qMod == 0 && rMod == 0 && sMod == 0) return "light";
-        if (qMod == 1 && rMod == 1 && sMod == 1) return "medium";
-        if (qMod == 2 && rMod == 2 && sMod == 2) return "dark";
+        int colorValue = (q - r) % 3;
+        if (colorValue < 0) colorValue += 3;
 
-        int sum = (qMod + rMod + sMod) % 3;
-        if (sum == 0) return "light";
-        if (sum == 1) return "medium";
-        return "dark";
+        switch (colorValue) {
+            case 0: return "medium";
+            case 1: return "light";
+            case 2: return "dark";
+            default: return "light";
+        }
     }
 
     // Posiciones según tablero estándar de Gliński
@@ -50,54 +49,57 @@ public class HexBoard {
     // - Negras arriba (filas 10-11)
     // - Blancas abajo (filas 1-2)
     private void setupInitialPieces() {
-        // === PIEZAS NEGRAS (ARRIBA) ===
-        // Fila 11 - La fila más superior con las piezas principales
-        // En la imagen: a11=Torre, b11=Caballo, c11=Alfil, d11=Dama, e11=Rey, f11=Dama, g11=Alfil, h11=Caballo, i11=Torre
+        // === PIEZAS NEGRAS (ARRIBA - lado norte) ===
 
-        // Usando r=-5 para la fila superior
-        placePiece(-5, 0, ChessPiece.PieceType.ROOK, ChessPiece.PieceColor.BLACK);      // a11
-        placePiece(-4, 0, ChessPiece.PieceType.KNIGHT, ChessPiece.PieceColor.BLACK);    // b11
-        placePiece(-3, 0, ChessPiece.PieceType.BISHOP, ChessPiece.PieceColor.BLACK);    // c11
-        placePiece(-2, 0, ChessPiece.PieceType.QUEEN, ChessPiece.PieceColor.BLACK);     // d11
-        placePiece(-1, 0, ChessPiece.PieceType.KING, ChessPiece.PieceColor.BLACK);      // e11
-        placePiece(0, 0, ChessPiece.PieceType.QUEEN, ChessPiece.PieceColor.BLACK);      // f11
-        placePiece(1, 0, ChessPiece.PieceType.BISHOP, ChessPiece.PieceColor.BLACK);     // g11
-        placePiece(2, 0, ChessPiece.PieceType.KNIGHT, ChessPiece.PieceColor.BLACK);     // h11
-        placePiece(3, 0, ChessPiece.PieceType.ROOK, ChessPiece.PieceColor.BLACK);       // i11
+        // Fila 11 (r = -5) - Piezas principales negras
+        placePiece(-1, -4, ChessPiece.PieceType.QUEEN, ChessPiece.PieceColor.BLACK);
+        placePiece(1, -5, ChessPiece.PieceType.KING, ChessPiece.PieceColor.BLACK);
 
-        // Fila 10 - Peones negros
-        placePiece(-5, 1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
-        placePiece(-4, 1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
-        placePiece(-3, 1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
-        placePiece(-2, 1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
-        placePiece(-1, 1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
-        placePiece(0, 1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
-        placePiece(1, 1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
-        placePiece(2, 1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
-        placePiece(3, 1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
+        placePiece(0, -5, ChessPiece.PieceType.BISHOP, ChessPiece.PieceColor.BLACK);
+        placePiece(0, -4, ChessPiece.PieceType.BISHOP, ChessPiece.PieceColor.BLACK);
+        placePiece(0, -3, ChessPiece.PieceType.BISHOP, ChessPiece.PieceColor.BLACK);
 
-        // === PIEZAS BLANCAS (ABAJO) ===
-        // Fila 2 - Peones blancos
+        placePiece(2, -5, ChessPiece.PieceType.KNIGHT, ChessPiece.PieceColor.BLACK);
+        placePiece(-2, -3, ChessPiece.PieceType.KNIGHT, ChessPiece.PieceColor.BLACK);
+        placePiece(3, -5, ChessPiece.PieceType.ROOK, ChessPiece.PieceColor.BLACK);
+        placePiece(-3, -2, ChessPiece.PieceType.ROOK, ChessPiece.PieceColor.BLACK);
+
+        // Fila 10 (r = -4) - Peones negros
+        placePiece(-4, -1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
+        placePiece(-3, -1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
+        placePiece(-2, -1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
+        placePiece(-1, -1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
+        placePiece(0, -1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
+        placePiece(1, -2, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
+        placePiece(2, -3, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
+        placePiece(3, -4, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
+        placePiece(4, -5, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
+
+        // === PIEZAS BLANCAS (ABAJO) === - COORDENADAS INVERTIDAS
+
+// Réplica simétrica de las piezas negras
+        placePiece(1, 4, ChessPiece.PieceType.QUEEN, ChessPiece.PieceColor.WHITE);
+        placePiece(-1, 5, ChessPiece.PieceType.KING, ChessPiece.PieceColor.WHITE);
+
+        placePiece(0, 5, ChessPiece.PieceType.BISHOP, ChessPiece.PieceColor.WHITE);
+        placePiece(0, 4, ChessPiece.PieceType.BISHOP, ChessPiece.PieceColor.WHITE);
+        placePiece(0, 3, ChessPiece.PieceType.BISHOP, ChessPiece.PieceColor.WHITE);
+
+        placePiece(-2, 5, ChessPiece.PieceType.KNIGHT, ChessPiece.PieceColor.WHITE);
+        placePiece(2, 3, ChessPiece.PieceType.KNIGHT, ChessPiece.PieceColor.WHITE);
+        placePiece(-3, 5, ChessPiece.PieceType.ROOK, ChessPiece.PieceColor.WHITE);
+        placePiece(3, 2, ChessPiece.PieceType.ROOK, ChessPiece.PieceColor.WHITE);
+
+// Peones blancos
+        placePiece(4, 1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
+        placePiece(3, 1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
+        placePiece(2, 1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
+        placePiece(1, 1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
+        placePiece(0, 1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
+        placePiece(-1, 2, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
+        placePiece(-2, 3, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
         placePiece(-3, 4, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
-        placePiece(-2, 4, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
-        placePiece(-1, 4, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
-        placePiece(0, 4, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
-        placePiece(1, 4, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
-        placePiece(2, 4, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
-        placePiece(3, 4, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
-        placePiece(4, 4, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
-        placePiece(5, 4, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
-
-        // Fila 1 - Piezas principales blancas
-        placePiece(-3, 5, ChessPiece.PieceType.ROOK, ChessPiece.PieceColor.WHITE);      // a1
-        placePiece(-2, 5, ChessPiece.PieceType.KNIGHT, ChessPiece.PieceColor.WHITE);    // b1
-        placePiece(-1, 5, ChessPiece.PieceType.BISHOP, ChessPiece.PieceColor.WHITE);    // c1
-        placePiece(0, 5, ChessPiece.PieceType.QUEEN, ChessPiece.PieceColor.WHITE);      // d1
-        placePiece(1, 5, ChessPiece.PieceType.KING, ChessPiece.PieceColor.WHITE);       // e1
-        placePiece(2, 5, ChessPiece.PieceType.QUEEN, ChessPiece.PieceColor.WHITE);      // f1
-        placePiece(3, 5, ChessPiece.PieceType.BISHOP, ChessPiece.PieceColor.WHITE);     // g1
-        placePiece(4, 5, ChessPiece.PieceType.KNIGHT, ChessPiece.PieceColor.WHITE);     // h1
-        placePiece(5, 5, ChessPiece.PieceType.ROOK, ChessPiece.PieceColor.WHITE);       // i1
+        placePiece(-4, 5, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
     }
 
     private void placePiece(int q, int r, ChessPiece.PieceType type, ChessPiece.PieceColor color) {

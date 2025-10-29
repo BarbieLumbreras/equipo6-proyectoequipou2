@@ -25,13 +25,14 @@ public class ChessPiece {
 
     // Obtener símbolo Unicode para representar la pieza
     public String getSymbol() {
+        // Usar símbolos más consistentes (todos rellenos o todos vacíos)
         switch (type) {
-            case KING:   return color == PieceColor.WHITE ? "♔" : "♚";
-            case QUEEN:  return color == PieceColor.WHITE ? "♕" : "♛";
-            case ROOK:   return color == PieceColor.WHITE ? "♖" : "♜";
-            case BISHOP: return color == PieceColor.WHITE ? "♗" : "♝";
-            case KNIGHT: return color == PieceColor.WHITE ? "♘" : "♞";
-            case PAWN:   return color == PieceColor.WHITE ? "♙" : "♟";
+            case KING:   return "♚"; //REY
+            case QUEEN:  return "♛"; //DAMA
+            case ROOK:   return "♜"; //TORRE
+            case BISHOP: return "♝"; //ALFIL
+            case KNIGHT: return "♞"; //JUAN
+            case PAWN:   return "♟"; //CORNEJO
             default:     return "";
         }
     }
