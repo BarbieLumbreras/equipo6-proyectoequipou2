@@ -1,0 +1,22 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- borde suave -->
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="16dp" />
+            <solid android:color="#2A1F1A"/>
+        </shape>
+    </item>
+    <!-- overlay radial muy leve para sensación de madera/vignette -->
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="16dp" />
+            <gradient
+                android:type="radial"
+                android:gradientRadius="600dp"
+                android:centerX="50%"
+                android:centerY="50%"
+                android:startColor="#33000000"
+                android:endColor="#00000000"/>
+        </shape>
+    </item>
+</layer-list>
