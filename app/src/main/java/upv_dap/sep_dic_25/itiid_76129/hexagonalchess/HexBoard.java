@@ -49,57 +49,9 @@ public class HexBoard {
     // - Negras arriba (filas 10-11)
     // - Blancas abajo (filas 1-2)
     private void setupInitialPieces() {
-        // === PIEZAS NEGRAS (ARRIBA - lado norte) ===
 
-        // Fila 11 (r = -5) - Piezas principales negras
-        placePiece(-1, -4, ChessPiece.PieceType.QUEEN, ChessPiece.PieceColor.BLACK);
-        placePiece(1, -5, ChessPiece.PieceType.KING, ChessPiece.PieceColor.BLACK);
+        placePiece(0, 0, ChessPiece.PieceType.QUEEN, ChessPiece.PieceColor.BLACK);
 
-        placePiece(0, -5, ChessPiece.PieceType.BISHOP, ChessPiece.PieceColor.BLACK);
-        placePiece(0, -4, ChessPiece.PieceType.BISHOP, ChessPiece.PieceColor.BLACK);
-        placePiece(0, -3, ChessPiece.PieceType.BISHOP, ChessPiece.PieceColor.BLACK);
-
-        placePiece(2, -5, ChessPiece.PieceType.KNIGHT, ChessPiece.PieceColor.BLACK);
-        placePiece(-2, -3, ChessPiece.PieceType.KNIGHT, ChessPiece.PieceColor.BLACK);
-        placePiece(3, -5, ChessPiece.PieceType.ROOK, ChessPiece.PieceColor.BLACK);
-        placePiece(-3, -2, ChessPiece.PieceType.ROOK, ChessPiece.PieceColor.BLACK);
-
-        // Fila 10 (r = -4) - Peones negros
-        placePiece(-4, -1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
-        placePiece(-3, -1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
-        placePiece(-2, -1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
-        placePiece(-1, -1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
-        placePiece(0, -1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
-        placePiece(1, -2, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
-        placePiece(2, -3, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
-        placePiece(3, -4, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
-        placePiece(4, -5, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.BLACK);
-
-        // === PIEZAS BLANCAS (ABAJO) === - COORDENADAS INVERTIDAS
-
-// Réplica simétrica de las piezas negras
-        placePiece(1, 4, ChessPiece.PieceType.QUEEN, ChessPiece.PieceColor.WHITE);
-        placePiece(-1, 5, ChessPiece.PieceType.KING, ChessPiece.PieceColor.WHITE);
-
-        placePiece(0, 5, ChessPiece.PieceType.BISHOP, ChessPiece.PieceColor.WHITE);
-        placePiece(0, 4, ChessPiece.PieceType.BISHOP, ChessPiece.PieceColor.WHITE);
-        placePiece(0, 3, ChessPiece.PieceType.BISHOP, ChessPiece.PieceColor.WHITE);
-
-        placePiece(-2, 5, ChessPiece.PieceType.KNIGHT, ChessPiece.PieceColor.WHITE);
-        placePiece(2, 3, ChessPiece.PieceType.KNIGHT, ChessPiece.PieceColor.WHITE);
-        placePiece(-3, 5, ChessPiece.PieceType.ROOK, ChessPiece.PieceColor.WHITE);
-        placePiece(3, 2, ChessPiece.PieceType.ROOK, ChessPiece.PieceColor.WHITE);
-
-// Peones blancos
-        placePiece(4, 1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
-        placePiece(3, 1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
-        placePiece(2, 1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
-        placePiece(1, 1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
-        placePiece(0, 1, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
-        placePiece(-1, 2, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
-        placePiece(-2, 3, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
-        placePiece(-3, 4, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
-        placePiece(-4, 5, ChessPiece.PieceType.PAWN, ChessPiece.PieceColor.WHITE);
     }
 
     private void placePiece(int q, int r, ChessPiece.PieceType type, ChessPiece.PieceColor color) {

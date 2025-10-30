@@ -149,19 +149,42 @@ public class MoveValidator {
         return (isWhite && r == -5) || (!isWhite && r == 5);
     }
 
-    // ==================== CABALLO HEXAGONAL ====================
+    // ==================== CABALLO HEXAGONAL GLIŃSKI CORRECTO ====================
     private boolean isValidKnightMove(HexCell from, HexCell to) {
-        int dq = Math.abs(to.getQ() - from.getQ());
-        int dr = Math.abs(to.getR() - from.getR());
-        int ds = Math.abs(to.getS() - from.getS());
+        int dq = to.getQ() - from.getQ();
+        int dr = to.getR() - from.getR();
 
-        // Movimientos de caballo en hexagonal (12 posibles)
-        return (dq == 2 && dr == 1 && ds == 1) ||
-                (dq == 1 && dr == 2 && ds == 1) ||
-                (dq == 1 && dr == 1 && ds == 2) ||
-                (dq == 2 && dr == 2 && ds == 0) ||
-                (dq == 2 && dr == 0 && ds == 2) ||
-                (dq == 0 && dr == 2 && ds == 2);
+        // El caballo se mueve: 2 pasos en una dirección + 1 paso en dirección adyacente
+        // Las 6 direcciones hexagonales son:
+        int[][] directions = {
+                {1, 0}, {1, -1}, {0, -1},
+                {-1, 0}, {-1, 1}, {0, 1}
+        };
+
+        // Para cada dirección principal, el caballo puede moverse a 2 casillas:
+        // - 2 pasos en dirección A + 1 paso en dirección A+1 (derecha)
+        // - 2 pasos en dirección A + 1 paso en dirección A-1 (izquierda)
+
+        for (int i = 0; i < 6; i++) {
+            int[] dir1 = directions[i];
+            int[] dir2 = directions[(i + 1) % 6]; // Dirección adyacente derecha
+            int[] dir3 = directions[(i + 5) % 6]; // Dirección adyacente izquierda
+
+            // 2 pasos en dirección i + 1 paso en dirección i+1
+            int targetQ1 = 2 * dir1[0] + dir2[0];
+            int targetR1 = 2 * dir1[1] + dir2[1];
+
+            // 2 pasos en dirección i + 1 paso en dirección i-1
+            int targetQ2 = 2 * dir1[0] + dir3[0];
+            int targetR2 = 2 * dir1[1] + dir3[1];
+
+            if ((dq == targetQ1 && dr == targetR1) ||
+                    (dq == targetQ2 && dr == targetR2)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // ==================== ALFIL HEXAGONAL ====================
@@ -170,10 +193,10 @@ public class MoveValidator {
         int dr = to.getR() - from.getR();
         int ds = to.getS() - from.getS();
 
-        // El alfil se mueve en las 3 direcciones diagonales del hexagonal
-        boolean isDiagonal = (dq == 0 && dr != 0 && ds != 0) ||
-                (dr == 0 && dq != 0 && ds != 0) ||
-                (ds == 0 && dq != 0 && dr != 0);
+        if (dq == 0 && dr == 0) return false; // No es un movimiento
+
+        // El alfil se mueve si el cambio en dos ejes es el mismo
+        boolean isDiagonal = (dq == dr) || (dr == ds) || (ds == dq);
 
         if (!isDiagonal) return false;
 
@@ -186,21 +209,61 @@ public class MoveValidator {
         int dr = to.getR() - from.getR();
         int ds = to.getS() - from.getS();
 
-        // La torre se mueve en las 3 direcciones rectas del hexagonal
-        boolean isStraight = (dr == 0 && ds == 0 && dq != 0) ||
-                (dq == 0 && ds == 0 && dr != 0) ||
-                (dq == 0 && dr == 0 && ds != 0);
+        if (dq == 0 && dr == 0) return false; // No es un movimiento
+
+        // La torre se mueve si un eje permanece constante
+        boolean isStraight = (dq == 0) || (dr == 0) || (ds == 0);
 
         if (!isStraight) return false;
 
         return isPathClear(from, to);
     }
 
-    // ==================== REINA HEXAGONAL ====================
+    // ==================== REINA HEXAGONAL (Gliński - Como la foto) ====================
+// ==================== DAMA/REINA HEXAGONAL GLIŃSKI COMPLETA ====================
     private boolean isValidQueenMove(HexCell from, HexCell to) {
-        return isValidRookMove(from, to) || isValidBishopMove(from, to);
+        // Movimientos básicos: Torre + Alfil
+        if (isValidRookMove(from, to) || isValidBishopMove(from, to)) {
+            return true;
+        }
+
+        // Movimientos de salto especial de la Dama
+        return isValidQueenJump(from, to);
     }
 
+    // ==================== SALTO ESPECIAL DE LA DAMA ====================
+    private boolean isValidQueenJump(HexCell from, HexCell to) {
+        int dq = to.getQ() - from.getQ();
+        int dr = to.getR() - from.getR();
+        int ds = to.getS() - from.getS();
+
+        // Los saltos especiales de la Dama siguen patrones específicos
+        // Desde (0,0) salta a: (-2,-2), (2,-4), (-4,2), (-2,4), (2,2), (4,-2)
+        // Estos patrones se pueden generalizar para cualquier posición
+
+        // Los saltos son movimientos donde las 3 coordenadas cambian
+        // y siguen la relación: |dq| = 2, |dr| = 2, |ds| = 4 en varias permutaciones
+
+        int absDq = Math.abs(dq);
+        int absDr = Math.abs(dr);
+        int absDs = Math.abs(ds);
+
+        // Patrones de salto de la Dama:
+        // 1. (2, 2, -4) y permutaciones
+        // 2. (2, -2, 0) y permutaciones (pero esto sería movimiento de alfil normal)
+        // 3. (4, -2, -2) y permutaciones
+
+        // Basado en los ejemplos que diste:
+        // (-2,-2,4), (2,-4,2), (-4,2,2), (-2,4,-2), (2,2,-4), (4,-2,-2)
+
+        return (absDq == 2 && absDr == 2 && absDs == 4) ||
+                (absDq == 2 && absDr == 4 && absDs == 2) ||
+                (absDq == 4 && absDr == 2 && absDs == 2) ||
+                // También incluyendo los patrones con signos opuestos
+                (absDq == 2 && absDr == 2 && absDs == 0) || // Esto sería alfil normal
+                (absDq == 4 && absDr == 2 && absDs == 2) ||
+                (absDq == 2 && absDr == 4 && absDs == 2);
+    }
     // ==================== REY HEXAGONAL ====================
     private boolean isValidKingMove(HexCell from, HexCell to) {
         int dq = Math.abs(to.getQ() - from.getQ());
