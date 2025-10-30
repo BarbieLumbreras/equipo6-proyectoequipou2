@@ -50,7 +50,7 @@ public class HexBoard {
     // - Blancas abajo (filas 1-2)
     private void setupInitialPieces() {
 
-        placePiece(0, 0, ChessPiece.PieceType.QUEEN, ChessPiece.PieceColor.BLACK);
+        placePiece(0, 0, ChessPiece.PieceType.KING, ChessPiece.PieceColor.BLACK);
 
     }
 

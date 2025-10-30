@@ -187,21 +187,20 @@ public class MoveValidator {
         return false;
     }
 
-    // ==================== ALFIL HEXAGONAL ====================
     private boolean isValidBishopMove(HexCell from, HexCell to) {
         int dq = to.getQ() - from.getQ();
         int dr = to.getR() - from.getR();
-        int ds = to.getS() - from.getS();
+        int ds = -(dq + dr); // importante: derivar s para mantener q+r+s=0
 
-        if (dq == 0 && dr == 0) return false; // No es un movimiento
+        if (dq == 0 && dr == 0) return false;
 
-        // El alfil se mueve si el cambio en dos ejes es el mismo
         boolean isDiagonal = (dq == dr) || (dr == ds) || (ds == dq);
-
         if (!isDiagonal) return false;
 
+        // Deja tu chequeo de bloqueo
         return isPathClear(from, to);
     }
+
 
     // ==================== TORRE HEXAGONAL ====================
     private boolean isValidRookMove(HexCell from, HexCell to) {
@@ -280,26 +279,47 @@ public class MoveValidator {
      * Verifica si el camino entre dos celdas está despejado
      */
     private boolean isPathClear(HexCell from, HexCell to) {
-        int distance = hexDistance(from, to);
-        if (distance <= 1) return true;
+        int dq = to.getQ() - from.getQ();
+        int dr = to.getR() - from.getR();
+        int ds = -(dq + dr); // mantener q+r+s=0
 
-        // Calcular dirección
-        int stepQ = Integer.compare(to.getQ() - from.getQ(), 0);
-        int stepR = Integer.compare(to.getR() - from.getR(), 0);
+        // Número de pasos "rectos" (arista o vértice) hasta el destino
+        int g = gcd3(Math.abs(dq), Math.abs(dr), Math.abs(ds));
+        if (g <= 1) return true; // adyacente o misma casilla (ya filtrado fuera)
 
-        // Verificar cada celda intermedia
-        for (int i = 1; i < distance; i++) {
-            int q = from.getQ() + stepQ * i;
-            int r = from.getR() + stepR * i;
+        // Paso correcto a lo largo de la línea (axial o diagonal por vértice)
+        int stepQ = dq / g;
+        int stepR = dr / g;
+
+        // Verificar celdas intermedias (excluye origen y destino)
+        int q = from.getQ();
+        int r = from.getR();
+        for (int i = 1; i < g; i++) {
+            q += stepQ;
+            r += stepR;
 
             HexCell cell = board.getCell(q, r);
             if (cell == null || cell.getPiece() != null) {
                 return false;
             }
         }
-
         return true;
     }
+
+    private int gcd(int a, int b) {
+        a = Math.abs(a); b = Math.abs(b);
+        while (b != 0) {
+            int t = a % b;
+            a = b;
+            b = t;
+        }
+        return a;
+    }
+
+    private int gcd3(int a, int b, int c) {
+        return gcd(gcd(a, b), c);
+    }
+
 
     /**
      * Obtiene la distancia hexagonal entre dos celdas
