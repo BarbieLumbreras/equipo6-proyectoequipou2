@@ -17,7 +17,6 @@ public class HexCell {
     public int getS() {
         return -q - r;
     }
-
     public int getQ() { return q; }
     public int getR() { return r; }
     public String getColor() { return color; }

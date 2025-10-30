@@ -5,6 +5,7 @@ import java.util.List;
 
 public class MoveValidator {
     private HexBoard board;
+    private HexCell enPassantTarget; // Para captura al paso
 
     public MoveValidator(HexBoard board) {
         this.board = board;
@@ -61,28 +62,30 @@ public class MoveValidator {
         return validMoves;
     }
 
-    // ==================== PEÓN ====================
-// ==================== PEÓN ====================
+    // ==================== PEÓN HEXAGONAL GLIŃSKI CORREGIDO ====================
     private boolean isValidPawnMove(HexCell from, HexCell to, ChessPiece pawn) {
         int dq = to.getQ() - from.getQ();
         int dr = to.getR() - from.getR();
+        int distance = from.distanceTo(to);
 
         boolean isWhite = (pawn.getColor() == ChessPiece.PieceColor.WHITE);
+        boolean isCapture = (to.getPiece() != null);
+        boolean isEnPassant = isEnPassantCapture(from, to, pawn);
 
-        // Movimiento hacia adelante (sin captura)
-        if (to.getPiece() == null) {
+        // Movimiento normal (sin captura)
+        if (!isCapture && !isEnPassant) {
             if (isWhite) {
-                // Peón blanco: avanza hacia NORTE (dr negativo)
+                // PEÓN BLANCO - hacia el NORTE (r negativo)
                 if (dr == -1 && dq == 0) return true;
-                // Dos pasos iniciales - CORRECCIÓN: desde cualquier posición inicial
+                // Movimiento doble desde posición inicial
                 if (!pawn.hasMoved() && dr == -2 && dq == 0) {
                     HexCell intermediate = board.getCell(from.getQ(), from.getR() - 1);
                     return intermediate != null && intermediate.getPiece() == null;
                 }
             } else {
-                // Peón negro: avanza hacia SUR (dr positivo)
+                // PEÓN NEGRO - hacia el SUR (r positivo)
                 if (dr == 1 && dq == 0) return true;
-                // Dos pasos iniciales - CORRECCIÓN: desde cualquier posición inicial
+                // Movimiento doble desde posición inicial
                 if (!pawn.hasMoved() && dr == 2 && dq == 0) {
                     HexCell intermediate = board.getCell(from.getQ(), from.getR() + 1);
                     return intermediate != null && intermediate.getPiece() == null;
@@ -90,38 +93,82 @@ public class MoveValidator {
             }
         }
 
-        // Captura (diagonales)
-        if (to.getPiece() != null && to.getPiece().getColor() != pawn.getColor()) {
+        // CAPTURAS (Ortogonales según Wikipedia)
+        if (isCapture || isEnPassant) {
             if (isWhite) {
-                // Peón blanco captura en diagonal NORESTE y NOROESTE
-                return (dq == 1 && dr == -1) || (dq == -1 && dr == -1);
+                // Capturas ortogonales para peón blanco
+                return (distance == 1) &&
+                        (dr == -1 || dr == 0 || dr == 1) &&
+                        (Math.abs(dq) == 1 || Math.abs(dr) == 1);
             } else {
-                // Peón negro captura en diagonal SURESTE y SUROESTE
-                return (dq == 1 && dr == 1) || (dq == -1 && dr == 1);
+                // Capturas ortogonales para peón negro
+                return (distance == 1) &&
+                        (dr == -1 || dr == 0 || dr == 1) &&
+                        (Math.abs(dq) == 1 || Math.abs(dr) == 1);
             }
         }
 
         return false;
     }
 
-    // ==================== CABALLO ====================
-    private boolean isValidKnightMove(HexCell from, HexCell to) {
+    // ==================== CAPTURA AL PASO ====================
+    private boolean isEnPassantCapture(HexCell from, HexCell to, ChessPiece pawn) {
+        if (enPassantTarget == null) return false;
+
+        boolean isWhite = (pawn.getColor() == ChessPiece.PieceColor.WHITE);
         int dq = to.getQ() - from.getQ();
         int dr = to.getR() - from.getR();
-        int ds = (-to.getQ() - to.getR()) - (-from.getQ() - from.getR());
 
-        // Movimientos de caballo en hexagonal (12 posibles):
-        // Se mueve 2 celdas en una dirección y 1 en otra perpendicular
-        return (Math.abs(dq) == 2 && Math.abs(dr) == 1 && Math.abs(ds) == 1) ||
-                (Math.abs(dq) == 1 && Math.abs(dr) == 2 && Math.abs(ds) == 1) ||
-                (Math.abs(dq) == 1 && Math.abs(dr) == 1 && Math.abs(ds) == 2);
+        // Verificar si el movimiento es una captura al paso
+        if (isWhite) {
+            return (dr == -1 && Math.abs(dq) == 1) && to.equals(enPassantTarget);
+        } else {
+            return (dr == 1 && Math.abs(dq) == 1) && to.equals(enPassantTarget);
+        }
     }
 
-    // ==================== ALFIL ====================
+    public void setEnPassantTarget(HexCell target) {
+        this.enPassantTarget = target;
+    }
+
+    public HexCell getEnPassantTarget() {
+        return enPassantTarget;
+    }
+
+    // ==================== VERIFICACIÓN DE PROMOCIÓN ====================
+    public boolean shouldPromotePawn(HexCell pawnCell) {
+        if (pawnCell.getPiece() == null || pawnCell.getPiece().getType() != ChessPiece.PieceType.PAWN) {
+            return false;
+        }
+
+        boolean isWhite = (pawnCell.getPiece().getColor() == ChessPiece.PieceColor.WHITE);
+        int r = pawnCell.getR();
+
+        // Peón blanco llega a la fila r = -5 (fila 11 en notación de Gliński)
+        // Peón negro llega a la fila r = 5 (fila 1 en notación de Gliński)
+        return (isWhite && r == -5) || (!isWhite && r == 5);
+    }
+
+    // ==================== CABALLO HEXAGONAL ====================
+    private boolean isValidKnightMove(HexCell from, HexCell to) {
+        int dq = Math.abs(to.getQ() - from.getQ());
+        int dr = Math.abs(to.getR() - from.getR());
+        int ds = Math.abs(to.getS() - from.getS());
+
+        // Movimientos de caballo en hexagonal (12 posibles)
+        return (dq == 2 && dr == 1 && ds == 1) ||
+                (dq == 1 && dr == 2 && ds == 1) ||
+                (dq == 1 && dr == 1 && ds == 2) ||
+                (dq == 2 && dr == 2 && ds == 0) ||
+                (dq == 2 && dr == 0 && ds == 2) ||
+                (dq == 0 && dr == 2 && ds == 2);
+    }
+
+    // ==================== ALFIL HEXAGONAL ====================
     private boolean isValidBishopMove(HexCell from, HexCell to) {
         int dq = to.getQ() - from.getQ();
         int dr = to.getR() - from.getR();
-        int ds = (-to.getQ() - to.getR()) - (-from.getQ() - from.getR());
+        int ds = to.getS() - from.getS();
 
         // El alfil se mueve en las 3 direcciones diagonales del hexagonal
         boolean isDiagonal = (dq == 0 && dr != 0 && ds != 0) ||
@@ -133,37 +180,35 @@ public class MoveValidator {
         return isPathClear(from, to);
     }
 
-    // ==================== TORRE ====================
+    // ==================== TORRE HEXAGONAL ====================
     private boolean isValidRookMove(HexCell from, HexCell to) {
         int dq = to.getQ() - from.getQ();
         int dr = to.getR() - from.getR();
-        int ds = (-to.getQ() - to.getR()) - (-from.getQ() - from.getR());
+        int ds = to.getS() - from.getS();
 
         // La torre se mueve en las 3 direcciones rectas del hexagonal
-        boolean isStraight = (dq == -dr && ds == 0) ||
-                (dq == -ds && dr == 0) ||
-                (dr == -ds && dq == 0);
+        boolean isStraight = (dr == 0 && ds == 0 && dq != 0) ||
+                (dq == 0 && ds == 0 && dr != 0) ||
+                (dq == 0 && dr == 0 && ds != 0);
 
         if (!isStraight) return false;
 
         return isPathClear(from, to);
     }
 
-    // ==================== REINA ====================
+    // ==================== REINA HEXAGONAL ====================
     private boolean isValidQueenMove(HexCell from, HexCell to) {
-        // La reina combina movimientos de torre y alfil
         return isValidRookMove(from, to) || isValidBishopMove(from, to);
     }
 
-    // ==================== REY ====================
+    // ==================== REY HEXAGONAL ====================
     private boolean isValidKingMove(HexCell from, HexCell to) {
-        // El rey se mueve una celda en cualquier dirección (6 direcciones hexagonales)
         int dq = Math.abs(to.getQ() - from.getQ());
         int dr = Math.abs(to.getR() - from.getR());
-        int ds = Math.abs((-to.getQ() - to.getR()) - (-from.getQ() - from.getR()));
+        int ds = Math.abs(to.getS() - from.getS());
 
-        // Un vecino hexagonal directo (distancia = 1)
-        return (dq + dr + ds) == 2;
+        // El rey se mueve una casilla en cualquier dirección
+        return Math.max(Math.max(dq, dr), ds) == 1;
     }
 
     // ==================== UTILIDADES ====================
@@ -172,34 +217,21 @@ public class MoveValidator {
      * Verifica si el camino entre dos celdas está despejado
      */
     private boolean isPathClear(HexCell from, HexCell to) {
-        int q0 = from.getQ();
-        int r0 = from.getR();
-        int q1 = to.getQ();
-        int r1 = to.getR();
+        int distance = hexDistance(from, to);
+        if (distance <= 1) return true;
 
-        int dq = q1 - q0;
-        int dr = r1 - r0;
-        int ds = (-q1 - r1) - (-q0 - r0);
-
-        // Calcular distancia hexagonal
-        int distance = Math.max(Math.max(Math.abs(dq), Math.abs(dr)), Math.abs(ds));
-
-        if (distance <= 1) return true; // Adyacente
-
-        // Normalizar dirección
-        int stepQ = Integer.compare(dq, 0);
-        int stepR = Integer.compare(dr, 0);
-        int stepS = Integer.compare(ds, 0);
+        // Calcular dirección
+        int stepQ = Integer.compare(to.getQ() - from.getQ(), 0);
+        int stepR = Integer.compare(to.getR() - from.getR(), 0);
 
         // Verificar cada celda intermedia
         for (int i = 1; i < distance; i++) {
-            int q = q0 + stepQ * i;
-            int r = r0 + stepR * i;
-            int s = -q - r;
+            int q = from.getQ() + stepQ * i;
+            int r = from.getR() + stepR * i;
 
             HexCell cell = board.getCell(q, r);
             if (cell == null || cell.getPiece() != null) {
-                return false; // Hay una pieza en el camino
+                return false;
             }
         }
 
@@ -210,10 +242,8 @@ public class MoveValidator {
      * Obtiene la distancia hexagonal entre dos celdas
      */
     private int hexDistance(HexCell from, HexCell to) {
-        int dq = Math.abs(to.getQ() - from.getQ());
-        int dr = Math.abs(to.getR() - from.getR());
-        int ds = Math.abs((-to.getQ() - to.getR()) - (-from.getQ() - from.getR()));
-
-        return (dq + dr + ds) / 2;
+        return (Math.abs(from.getQ() - to.getQ()) +
+                Math.abs(from.getR() - to.getR()) +
+                Math.abs(from.getS() - to.getS())) / 2;
     }
 }
